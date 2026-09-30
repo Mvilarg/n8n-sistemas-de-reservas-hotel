@@ -1,0 +1,494 @@
+{
+  "name": "Examen-gestion-de-hotel",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "13BcWaLBIQUcUCHyMYlmApPCMmkXr_yielXm9IybE4jk",
+          "mode": "list",
+          "cachedResultName": "examen_hotel",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13BcWaLBIQUcUCHyMYlmApPCMmkXr_yielXm9IybE4jk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1175070945,
+          "mode": "list",
+          "cachedResultName": "Respuestas de formulario 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13BcWaLBIQUcUCHyMYlmApPCMmkXr_yielXm9IybE4jk/edit#gid=1175070945"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b7a12fa2-0cf5-4bdc-961d-be7a8b5bf21a",
+      "name": "Google Sheets Trigger",
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "yYzipdsiGmehHjw3",
+          "name": "Google Sheets Trigger account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Eres el Agente de Reservas de Casa Jacaranda (hotel boutique de 7 habitaciones). Tu función es procesar solicitudes de reserva entrantes, evaluar la disponibilidad y las políticas del hotel, y generar los datos necesarios para registrar la decisión y enviar un correo al cliente.\n\nRecibirás tres bloques de información:\n1. DATOS DE LA SOLICITUD: La información enviada por el cliente.\n2. INVENTARIO DE HABITACIONES: Capacidad y precios de las 7 habitaciones.\n3. RESERVAS EXISTENTES: Listado de reservas actuales para evaluar disponibilidad y duplicados.\n\n# POLÍTICAS DEL HOTEL\n- Check-in: desde 3:00 p.m. | Check-out: hasta 12:00 m.\n- Desayuno: Incluido en todas las tarifas.\n- Cuna para bebé: Gratis bajo petición.\n- Decoración romántica: Cargo único de Q60 por estancia.\n- Llegadas después de 11:00 p.m.: No garantizadas (sujetas a revisión del personal).\n- Alergias/restricciones alimentarias: Se registran para cocina, sin costo.\n- Mascotas: No permitidas.\n- Cama adicional: No disponible.\n- Otras peticiones: Sujetas a revisión del personal.\n\n# ALGORITMO DE PROCESAMIENTO (Paso a paso)\n\nPASO 1: VALIDACIÓN DE LA SOLICITUD\nUna solicitud es \"Solicitud inválida\" si:\n- La fecha de entrada es anterior a la fecha actual.\n- La fecha de salida es igual o anterior a la fecha de entrada.\n- El número de huéspedes es < 1 o > 4.\n- La estancia supera las 14 noches.\n\nPASO 2: VERIFICACIÓN DE DUPLICADOS\nEs \"Solicitud duplicada\" si ya existe una reserva con estado \"Confirmada\" que comparta el mismo correo del cliente, misma fecha de entrada y misma fecha de salida.\n\nPASO 3: DISPONIBILIDAD Y ASIGNACIÓN (Si superó los pasos 1 y 2)\n- Una habitación está disponible si no se cruza con ninguna reserva \"Confirmada\". (El día de salida de una reserva puede ser el día de entrada de otra).\n- Una habitación es apta si el tipo coincide con el solicitado y la capacidad soporta el número de huéspedes.\n- Asignación: Si hay varias aptas y disponibles, asigna la de MENOR número de habitación.\n- Alternativa: Si no hay habitaciones del tipo solicitado, busca una alternativa (la disponible de menor precio que soporte a los huéspedes). La alternativa NO se confirma, la solicitud pasa a estado \"Sin disponibilidad\" y se ofrece la alternativa por correo.\n\nPASO 4: CÁLCULO DE PRECIO\n- Noches = diferencia en días entre salida y entrada.\n- Total = (Noches × precio_noche) + cargos adicionales (ej. decoración romántica).\n- Usa EXCLUSIVAMENTE los precios del INVENTARIO DE HABITACIONES.\n\nPASO 5: CLASIFICACIÓN DE PETICIONES ESPECIALES\nClasifica cada petición del texto libre del cliente:\n- [ATENDIDA]: El hotel puede cumplirla según políticas.\n- [NO PERMITIDA]: Contradice una política.\n- [REVISIÓN PERSONAL]: No garantizada o no contemplada.\n\nPASO 6: GENERACIÓN DEL CORREO (HTML)\nRedacta el correo con un tono cordial y profesional. Usa estas plantillas según el estado:\n- Estado Confirmada: Asunto: \"Reserva confirmada R-XXXX – Casa Jacaranda\". Incluir: Nombre, código, número/tipo de habitación, fechas, noches, total (Q), horarios check-in/out y respuesta a cada petición.\n- Estado Sin disponibilidad: Asunto: \"Sin disponibilidad para tus fechas – Casa Jacaranda\". Indicar que no se realizó. Si hay alternativa, incluir tipo, precio/noche y total estimado. Explicar que debe enviar un nuevo formulario para aceptarla.\n- Estado Solicitud inválida: Asunto: \"No pudimos procesar tu solicitud – Casa Jacaranda\". Explicar motivo e invitar a reenviar.\n- Estado Solicitud duplicada: Asunto: \"Ya tienes una reserva registrada – Casa Jacaranda\". Incluir código de reserva existente.\n\nREGLAS CORREO: EL MENSAJE QUE DEBES ENTREGAR SE DEBE VER BIEN VISUALMENTE Y NO DEBE CONTENER CODIGO, LISTAS, JSON, UNICAMENTE LA INFORMACIÓN INDICADA PREVIAMENTE EN UN FORMATO HTML AGRADABLE A LA VISTA",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "f28eb593-9727-4844-851b-6adb700feea6",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        96,
+        208
+      ],
+      "id": "bccf88f0-73b2-42fa-bbf6-411fbf1f7b9d",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "sIIdI0ZBzezjjSrU",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13BcWaLBIQUcUCHyMYlmApPCMmkXr_yielXm9IybE4jk",
+          "mode": "list",
+          "cachedResultName": "examen_hotel",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13BcWaLBIQUcUCHyMYlmApPCMmkXr_yielXm9IybE4jk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Habitaciones",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13BcWaLBIQUcUCHyMYlmApPCMmkXr_yielXm9IybE4jk/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        496,
+        256
+      ],
+      "id": "3a429a67-7501-4240-b204-1716acf1bb73",
+      "name": "Leer habitaciones",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "4LRNMzJK05CcgqVX",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "13BcWaLBIQUcUCHyMYlmApPCMmkXr_yielXm9IybE4jk",
+          "mode": "list",
+          "cachedResultName": "examen_hotel",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13BcWaLBIQUcUCHyMYlmApPCMmkXr_yielXm9IybE4jk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2050147047,
+          "mode": "list",
+          "cachedResultName": "Reserva",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13BcWaLBIQUcUCHyMYlmApPCMmkXr_yielXm9IybE4jk/edit#gid=2050147047"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "fecha_registro": "={{ $json['Marca temporal'] }}",
+            "nombre": "={{ $json['Nombre Completo'] }}",
+            "correo": "={{ $json['Correo electrónico'] }}",
+            "telefono": "={{ $json['Teléfono'] }}",
+            "tipo": "={{ $json['Tipo de habitación preferida (Sencilla, Doble o Suite)'] }}",
+            "fecha_entrada": "={{ $json['Fecha de entrada'] }}",
+            "fecha_salida": "={{ $json['Fecha de salida'] }}",
+            "huespedes": "={{ $json['Número de huéspedes'] }}",
+            "id_reserva": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('id_reserva', `formato R-0000, consecutivo respecto a la última fila de la hoja.`, 'string') }}",
+            "total": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('total', ``, 'string') }}",
+            "noches": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('noches', `Calcula el numero de noches que el cliente estará hospedado en base a su fecha de entrada y de salida `, 'string') }}",
+            "peticiones_especiales": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('peticiones_especiales', `Ingresa las peticiones especiales indicadas por el cliente en caso hayan `, 'string') }}",
+            "habitacion": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('habitacion', `Ingresa el numero de habitación asignada`, 'string') }}",
+            "notas_internas": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('notas_internas', `Notas internas`, 'string') }}",
+            "estado": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('estado', `Estado de la habitacion, Confirmada, Sin disponibilidad o Solicitud inválida.`, 'string') }}"
+          },
+          "matchingColumns": [
+            "fecha_registro"
+          ],
+          "schema": [
+            {
+              "id": "id_reserva",
+              "displayName": "id_reserva",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "fecha_registro",
+              "displayName": "fecha_registro",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nombre",
+              "displayName": "nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "correo",
+              "displayName": "correo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "telefono",
+              "displayName": "telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "habitacion",
+              "displayName": "habitacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tipo",
+              "displayName": "tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_entrada",
+              "displayName": "fecha_entrada",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_salida",
+              "displayName": "fecha_salida",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "huespedes",
+              "displayName": "huespedes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "noches",
+              "displayName": "noches",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total",
+              "displayName": "total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "peticiones_especiales",
+              "displayName": "peticiones_especiales",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notas_internas",
+              "displayName": "notas_internas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        288
+      ],
+      "id": "baf07880-9b75-4916-8f09-0abc966808cb",
+      "name": "Actualizar reservas",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "4LRNMzJK05CcgqVX",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13BcWaLBIQUcUCHyMYlmApPCMmkXr_yielXm9IybE4jk",
+          "mode": "list",
+          "cachedResultName": "examen_hotel",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13BcWaLBIQUcUCHyMYlmApPCMmkXr_yielXm9IybE4jk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1175070945,
+          "mode": "list",
+          "cachedResultName": "Respuestas de formulario 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13BcWaLBIQUcUCHyMYlmApPCMmkXr_yielXm9IybE4jk/edit#gid=1175070945"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        368,
+        320
+      ],
+      "id": "a52d0df4-72bf-4286-887f-f2dbc42d0931",
+      "name": "Leer datos formulario",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "4LRNMzJK05CcgqVX",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13BcWaLBIQUcUCHyMYlmApPCMmkXr_yielXm9IybE4jk",
+          "mode": "list",
+          "cachedResultName": "examen_hotel",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13BcWaLBIQUcUCHyMYlmApPCMmkXr_yielXm9IybE4jk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2050147047,
+          "mode": "list",
+          "cachedResultName": "Reserva",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13BcWaLBIQUcUCHyMYlmApPCMmkXr_yielXm9IybE4jk/edit#gid=2050147047"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        624,
+        192
+      ],
+      "id": "01f4580c-31dc-4451-8ba2-fee339a15286",
+      "name": "Leer reservas",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "4LRNMzJK05CcgqVX",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "mario.villa97@gmail.com",
+        "subject": "Casa Jacaranda",
+        "message": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        656,
+        0
+      ],
+      "id": "242714ff-65c2-43f4-a79a-752f1e7d2732",
+      "name": "Send a message",
+      "webhookId": "12b926ce-fd39-4025-8feb-a278eecb7db3",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "DUPOxTAKFdEPKQD7",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Sheets Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer habitaciones": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar reservas": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer datos formulario": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer reservas": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b1e34d01-006d-4794-b157-f26b6ecab782",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9a1ec356a8710f3c2444ea9d8305ed17e2119b43165417eb5a2c66d8968680a9"
+  },
+  "nodeGroups": [],
+  "id": "98iMwkGqRe9obkZs",
+  "tags": []
+}
